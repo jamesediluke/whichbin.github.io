@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bin Collection Tracker</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .setup-form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, button {
+            padding: 8px;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .calendar {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .month-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .month-name {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .day-name {
+            text-align: center;
+            font-weight: bold;
+            padding: 10px 0;
+        }
+        .calendar-day {
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 4px;
+            cursor: default;
+        }
+        .empty {
+            background-color: #f5f5f5;
+        }
+        .today {
+            background-color: yellow;
+            border: 2px solid #333;
+            font-weight: bold;
+        }
+        .collection-day {
+            font-weight: bold;
+            border: 2px dashed #333;
+        }
+        .collection-day.green-week {
+            background-color: darkgreen;
+            color: white;
+        }
+        .collection-day.recycling-week {
+            background-color: darkred;
+            color: white;
+        }
+        .green-week {
+            background-color: rgba(76, 175, 80, 0.3);
+        }
+        .recycling-week {
+            background-color: rgba(244, 67, 54, 0.3);
+        }
+        .bin-indicator {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #eee;
+        }
+        .green {
+            color: #4CAF50;
+        }
+        .red {
+            color: #F44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bin Collection Tracker</h1>
+
+    <div class="setup-form" id="setupForm">
+        <div class="form-group">
+            <label for="collectionDay">Collection Day:</label>
+            <select id="collectionDay">
+                <option value="0">Sunday</option>
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="initialBinType">Current Week Bin Type:</label>
+            <select id="initialBinType">
+                <option value="green">Green Bin</option>
+                <option value="recycling">Recycling Bin</option>
+            </select>
+        </div>
+        <button id="saveSettings">Save Settings</button>
+    </div>
+
+    <div class="calendar">
+        <div class="month-header">
+            <div class="month-name" id="currentMonth">Month Year</div>
+        </div>
+        <div class="calendar-grid" id="calendarDays">
+            <div class="day-name">Sun</div>
+            <div class="day-name">Mon</div>
+            <div class="day-name">Tue</div>
+            <div class="day-name">Wed</div>
+            <div class="day-name">Thu</div>
+            <div class="day-name">Fri</div>
+            <div class="day-name">Sat</div>
+            <!-- Calendar days will be added here by JavaScript -->
+        </div>
+    </div>
+    
+    <div class="bin-indicator" id="binIndicator">
+        This week: <span id="currentBinType">Loading...</span>
+        <div id="nextCollectionInfo" style="margin-top: 10px; font-size: 16px;"></div>
+    </div>
+
+    <script>
+        // Store user settings in localStorage
+        let collectionDay = localStorage.getItem('collectionDay') ? parseInt(localStorage.getItem('collectionDay')) : null;
+        let initialBinType = localStorage.getItem('initialBinType') || null;
+        let initialDate = localStorage.getItem('initialDate') ? new Date(localStorage.getItem('initialDate')) : null;
+
+        // DOM elements
+        const setupForm = document.getElementById('setupForm');
+        const collectionDaySelect = document.getElementById('collectionDay');
+        const initialBinTypeSelect = document.getElementById('initialBinType');
+        const saveButton = document.getElementById('saveSettings');
+        const currentMonthEl = document.getElementById('currentMonth');
+        const calendarDaysEl = document.getElementById('calendarDays');
+        const binIndicatorEl = document.getElementById('binIndicator');
+        const currentBinTypeEl = document.getElementById('currentBinType');
+        const nextCollectionInfoEl = document.getElementById('nextCollectionInfo');
+
+        // Event listeners
+        saveButton.addEventListener('click', saveSettings);
+
+        // If we have settings, hide the form and show the calendar
+        if (collectionDay !== null && initialBinType !== null && initialDate !== null) {
+            setupForm.style.display = 'none';
+        }
+
+        // Initialize the calendar
+        updateCalendar();
+
+        // Set up an interval to update the calendar daily
+        setInterval(updateCalendar, 1000 * 60 * 60); // Update every hour
+
+        // Function to save settings
+        function saveSettings() {
+            collectionDay = parseInt(collectionDaySelect.value);
+            initialBinType = initialBinTypeSelect.value;
+            initialDate = new Date();
+            
+            // Set to start of day to avoid time complications
+            initialDate.setHours(0, 0, 0, 0);
+            
+            localStorage.setItem('collectionDay', collectionDay);
+            localStorage.setItem('initialBinType', initialBinType);
+            localStorage.setItem('initialDate', initialDate.toISOString());
+            
+            setupForm.style.display = 'none';
+            updateCalendar();
+        }
+
+        // Function to update the calendar
+        function updateCalendar() {
+            if (collectionDay === null || initialBinType === null || initialDate === null) {
+                return; // Don't update if we don't have settings
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Get the current month and year
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            
+            // Update the month header
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                               'July', 'August', 'September', 'October', 'November', 'December'];
+            currentMonthEl.textContent = `${monthNames[currentMonth]} ${currentYear}`;
+            
+            // Calculate the first day of the month
+            const firstDay = new Date(currentYear, currentMonth, 1);
+            const startingDayOfWeek = firstDay.getDay();
+            
+            // Calculate the days in the month
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            
+            // Clear the calendar days
+            // Keep the day names (first 7 elements) and remove the rest
+            while (calendarDaysEl.children.length > 7) {
+                calendarDaysEl.removeChild(calendarDaysEl.lastChild);
+            }
+            
+            // Add empty cells for days before the first of the month
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day empty';
+                calendarDaysEl.appendChild(emptyDay);
+            }
+            
+            // Find the next collection date
+            const nextCollectionDate = new Date(today);
+            
+            // If today is after the collection day this week, next collection is next week
+            if (today.getDay() > collectionDay) {
+                nextCollectionDate.setDate(nextCollectionDate.getDate() + (7 - today.getDay() + collectionDay));
+            } 
+            // If today is the collection day, the next is in 7 days
+            else if (today.getDay() === collectionDay) {
+                nextCollectionDate.setDate(nextCollectionDate.getDate() + 7);
+            }
+            // If today is before the collection day this week
+            else {
+                nextCollectionDate.setDate(nextCollectionDate.getDate() + (collectionDay - today.getDay()));
+            }
+            
+            // Calculate bin type for the next collection day
+            const weeksSinceInitialForNextCollection = Math.floor((nextCollectionDate - initialDate) / (7 * 24 * 60 * 60 * 1000));
+            const nextCollectionBinType = weeksSinceInitialForNextCollection % 2 === 0 ? initialBinType : (initialBinType === 'green' ? 'recycling' : 'green');
+            
+            // The current bin type is the type of the upcoming collection
+            const currentBinType = nextCollectionBinType;
+            
+            // Update the current bin type display
+            currentBinTypeEl.textContent = currentBinType === 'green' ? 'GREEN BIN' : 'RECYCLING BIN';
+            currentBinTypeEl.className = currentBinType === 'green' ? 'green' : 'red';
+            
+            // Display info about next collection (already calculated above)
+            
+            // Display next collection info
+            const nextCollectionDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][nextCollectionDate.getDay()];
+            const nextCollectionDateStr = `${nextCollectionDate.getDate()} ${monthNames[nextCollectionDate.getMonth()]} ${nextCollectionDate.getFullYear()}`;
+            nextCollectionInfoEl.innerHTML = `Next collection: <strong>${nextCollectionDay}, ${nextCollectionDateStr}</strong> - <span class="${nextCollectionBinType === 'green' ? 'green' : 'red'}">${nextCollectionBinType === 'green' ? 'GREEN BIN' : 'RECYCLING BIN'}</span>`;
+            // Add the days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(currentYear, currentMonth, day);
+                date.setHours(0, 0, 0, 0);
+                
+                const dayEl = document.createElement('div');
+                dayEl.className = 'calendar-day';
+                dayEl.textContent = day;
+                
+                // Highlight today
+                if (date.getTime() === today.getTime()) {
+                    dayEl.classList.add('today');
+                }
+                
+                // Determine the previous collection date
+                const prevCollectionDate = new Date(nextCollectionDate);
+                prevCollectionDate.setDate(prevCollectionDate.getDate() - 7);
+                
+                // Determine which collection this day is relevant for
+                // Find the next collection date after or on this date
+                let nextBinCollectionDate = new Date(date);
+                let nextBinType;
+                
+                // If current day is not a collection day, find the next one
+                if (nextBinCollectionDate.getDay() !== collectionDay) {
+                    const daysUntilNextCollection = (collectionDay + 7 - nextBinCollectionDate.getDay()) % 7;
+                    nextBinCollectionDate.setDate(nextBinCollectionDate.getDate() + daysUntilNextCollection);
+                }
+                
+                // Calculate bin type for this collection date
+                const weeksSinceInitial = Math.floor((nextBinCollectionDate - initialDate) / (7 * 24 * 60 * 60 * 1000));
+                nextBinType = weeksSinceInitial % 2 === 0 ? initialBinType : (initialBinType === 'green' ? 'recycling' : 'green');
+                
+                // If current date is after this collection day, find the next collection date
+                if (date > nextBinCollectionDate) {
+                    nextBinCollectionDate.setDate(nextBinCollectionDate.getDate() + 7);
+                    // Switch bin type for next collection
+                    nextBinType = nextBinType === 'green' ? 'recycling' : 'green';
+                }
+                
+                // Clear any existing color classes
+                dayEl.classList.remove('green-week', 'recycling-week', 'collection-day');
+                
+                // Check if this is a collection day
+                const isCollectionDay = date.getDay() === collectionDay;
+                
+                if (isCollectionDay) {
+                    // Apply collection day styling (dark colors)
+                    dayEl.classList.add('collection-day');
+                    
+                    // Apply the correct bin type class
+                    if (nextBinType === 'green') {
+                        dayEl.classList.add('green-week');
+                    } else {
+                        dayEl.classList.add('recycling-week');
+                    }
+                } else {
+                    // Calculate days until the next collection
+                    const msPerDay = 24 * 60 * 60 * 1000;
+                    const daysToNextCollection = Math.round((nextBinCollectionDate - date) / msPerDay);
+                    
+                    // Apply light colors based on whether it's within 6 days of collection
+                    if (daysToNextCollection <= 6 && daysToNextCollection > 0) {
+                        // Within 6 days before a collection, use the color of the upcoming collection
+                        if (nextBinType === 'green') {
+                            dayEl.classList.add('green-week');
+                        } else {
+                            dayEl.classList.add('recycling-week');
+                        }
+                    } else {
+                        // For days after a collection or more than 6 days before
+                        // Use the color of the next upcoming collection
+                        if (nextBinType === 'green') {
+                            dayEl.classList.add('green-week');
+                        } else {
+                            dayEl.classList.add('recycling-week');
+                        }
+                    }
+                }
+                calendarDaysEl.appendChild(dayEl);
+            }
+        }
+    </script>
+</body>
+</html>
+
